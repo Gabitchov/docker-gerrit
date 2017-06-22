@@ -1,0 +1,56 @@
+version: '2'
+services:
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_USER=gerrit2
+      - POSTGRES_PASSWORD=gerrit
+      - POSTGRES_DB=reviewdb
+      - POSTGRES_ROOT_PASSWORD=admin
+    ports:
+      - "5432:5432"
+  gerrit:
+    build: image
+    image: gabitchov/gerrit
+    ports:
+      - "8080:8080"
+      - "29418:29418"
+    depends_on:
+      - postgres
+    environment:
+      - JAVA_OPTIONS=-Djava.net.preferIPv4Stack=true 
+      - GERRIT_WEB_URL=http://localhost:8080/
+      - GERRIT_DB_TYPE=postgresql
+      - GERRIT_DB_HOSTNAME=gerrit-db
+      - GERRIT_DB_PORT=5432
+      - GERRIT_DB_DATABASE=reviewdb
+      - GERRIT_DB_USERNAME=gerrit2
+      - GERRIT_DB_PASSWORD=gerrit
+      - GERRIT_LDAP_SERVER=ldap://ldap-host
+      - GERRIT_LDAP_USERNAME=cn=admin,dc=example,dc=org
+      - GERRIT_LDAP_PWD=admin
+      - GERRIT_LDAP_ACCOUNT_BASE=ou=people,ou=gerrit,dc=example,dc=org
+      - GERRIT_LDAP_ACCOUNT_PATTERN=(&(objectClass=posixAccount)(uid=$${username}))
+      - GERRIT_LDAP_ACCOUNT_FULLNAME=cn
+      - GERRIT_LDAP_ACCOUNT_EMAIL=mail
+      - GERRIT_LDAP_GROUP_BASE=ou=groups,ou=gerrit,dc=example,dc=org
+      - GERRIT_LDAP_GROUP_PATTERN=(cn=$${groupname})
+      - GERRIT_LDAP_GROUP_MEMBERPATTERN=(&(objectClass=posixGroup)(|(memberUid=$${username})(gidNumber=$${gidNumber})))
+      - GERRIT_PORT=8080
+    links:
+      - ldap:ldap-host
+      - postgres:gerrit-db
+  ldap:
+    image: osixia/openldap:1.1.8
+    environment:
+      - LDAP_ORGANISATION=MyCompany
+      - LDAP_DOMAIN=example.org
+      - LDAP_ADMIN_PASSWORD=admin
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.6.12
+    links:
+      - ldap:ldap-host
+    environment:
+      - PHPLDAPADMIN_LDAP_HOSTS=ldap-host
+    ports:
+      - "3454:443"
